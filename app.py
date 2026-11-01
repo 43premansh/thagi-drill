@@ -245,23 +245,18 @@ tab1, tab2, tab3 = st.tabs(["📞 Drill", "🎭 Clone Reveal", "📋 Report Card
 
 # ---------- TAB 1 ----------
 with tab1:
-    if st.button("📞 Start call") and not S.history:
-        speak_next()
+    started = st.button("📞 Start call")
     with st.expander("📲 Get the drill as a real phone call (coming soon)"):
         c1, c2 = st.columns([3, 1])
         phone = c1.text_input("Your phone number", placeholder="+91 XXXXX XXXXX", key="phone")
         if c2.button("📞 Call me"):
             st.info("Phone calls aren't live yet — use **Start call** below for now. Your number was not saved or used.")
-    risk = S.risk
-    label = "🟢 SAFE" if risk < 35 else "🟠 RISKY" if risk < 70 else "🔴 SCAMMED"
-    st.progress(risk / 100, text=f"Danger meter: {risk}/100 — {label}")
-    for m in S.history:
-        with st.chat_message("🕵️" if m["role"] == "scammer" else "👵"):
-            st.write(m["content"])
-    if S.tip:
-        st.info(f"💡 Coach: {S.tip}")
-    if S.pending_audio:
-        tts(S.pending_audio, LANG, "scammer"); S.pending_audio = None
+    meter_ph = st.empty()
+    chat_ph = st.container()
+    extra_ph = st.container()
+    if started and not S.history:
+        speak_next()
+    user_text = ""
     if S.history and not S.done:
         audio = None
         try:
@@ -271,13 +266,12 @@ with tab1:
         with st.form("reply", clear_on_submit=True):
             typed = st.text_input("…or type your reply (press Enter)")
             sent = st.form_submit_button("Send reply")
-        user_text = ""
-        if audio is not None:
+        if sent and typed:
+            user_text = typed
+        elif audio is not None:
             h = hashlib.md5(audio.getvalue()).hexdigest()
             if h != S.last_hash:
                 S.last_hash = h; user_text = stt(audio, LANG)
-        elif sent and typed:
-            user_text = typed
         if user_text:
             S.history.append({"role": "user", "content": user_text})
             g = grade(S.history, user_text)
@@ -290,9 +284,20 @@ with tab1:
                 S.done = True
             else:
                 speak_next()
-            st.rerun()
-    if S.done:
-        st.success("Drill complete — see Report Card")
+    risk = S.risk
+    label = "🟢 SAFE" if risk < 35 else "🟠 RISKY" if risk < 70 else "🔴 SCAMMED"
+    meter_ph.progress(risk / 100, text=f"Danger meter: {risk}/100 — {label}")
+    with chat_ph:
+        for m in S.history:
+            with st.chat_message("🕵️" if m["role"] == "scammer" else "👵"):
+                st.write(m["content"])
+    with extra_ph:
+        if S.tip:
+            st.info(f"💡 Coach: {S.tip}")
+        if S.pending_audio:
+            tts(S.pending_audio, LANG, "scammer"); S.pending_audio = None
+        if S.done:
+            st.success("Drill complete — see Report Card")
 
 # ---------- TAB 2 ----------
 with tab2:
