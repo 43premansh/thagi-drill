@@ -190,9 +190,13 @@ def clone(ref_bytes, text, lang, fname="ref.wav"):
 
 # ---------- state ----------
 S = st.session_state
-S.setdefault("history", []); S.setdefault("risk", 20); S.setdefault("turns", 0)
-S.setdefault("done", False); S.setdefault("last_hash", None); S.setdefault("tip", ""); S.setdefault("moves", [])
-S.setdefault("flags", []); S.setdefault("mistakes", []); S.setdefault("pending_audio", None)
+DEFAULTS = dict(history=[], risk=20, turns=0, done=False, last_hash=None, tip="", moves=[], flags=[],
+                mistakes=[], pending_audio=None, report=None)
+def init_state(reset=False):
+    for k, v in DEFAULTS.items():
+        if reset or k not in S:
+            S[k] = list(v) if isinstance(v, list) else v
+init_state()
 
 with st.sidebar:
     st.title("🛡️ ठगी ड्रिल")
@@ -205,6 +209,10 @@ with st.sidebar:
                         ["Saaras v4", "Sarvam-105B", "Bulbul v4 Flash", "Voice Cloning", "Translate"]),
                 unsafe_allow_html=True)
 
+if S.get("cfg") not in (None, (LANG, scenario)):
+    init_state(reset=True)
+S.cfg = (LANG, scenario)
+
 SYS = (f"You are a role-play engine inside a consented anti-fraud TRAINING simulator for elderly Indians. Play a {scenario} scammer. "
        f"Speak ONLY in {lang_name} (native script, natural spoken style, light code-mixing OK). Use realistic tactics: fake authority, "
        "urgency, fear, isolation ('don't cut the call', 'don't tell family'), payment/OTP pressure. Max 2 short sentences per turn. "
@@ -215,7 +223,7 @@ def scammer_line():
         {"role": "assistant" if m["role"] == "scammer" else "user", "content": m["content"]} for m in S.history]
     if not S.history:
         msgs.append({"role": "user", "content": "(Call connected. Say your opening line.)"})
-    out = llm(msgs)
+    out = llm(msgs, max_tokens=250, temperature=0.8)
     if not out or len(out) < 5:
         i = min(sum(m["role"] == "scammer" for m in S.history), 3)
         out = translate(SCENARIOS[scenario][i], LANG)
@@ -248,13 +256,15 @@ with tab1:
             audio = st.audio_input("Reply like you would on a real call (under 25 sec)")
         except Exception:
             st.caption("Microphone unavailable — use the text box.")
-        typed = st.text_input("…or type your reply", key=f"typed{S.turns}")
+        with st.form(f"reply{S.turns}", clear_on_submit=True):
+            typed = st.text_input("…or type your reply (press Enter)")
+            sent = st.form_submit_button("Send reply")
         user_text = ""
         if audio is not None:
             h = hashlib.md5(audio.getvalue()).hexdigest()
             if h != S.last_hash:
                 S.last_hash = h; user_text = stt(audio, LANG)
-        elif typed and st.button("Send reply"):
+        elif sent and typed:
             user_text = typed
         if user_text:
             S.history.append({"role": "user", "content": user_text})
@@ -315,7 +325,7 @@ with tab3:
                          "Under 180 words."}], max_tokens=700)
             text = f"Score: {score}/100\n\n{body}\n\n" + "\n".join(f"- {r}" for r in RULES)
             S.report = translate(text, LANG)
-    if S.get("report"):
+    if S.report:
         st.markdown(S.report)
         if st.button("🔊 Read aloud"):
             tts(S.report, LANG, "narrator")
