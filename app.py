@@ -157,13 +157,20 @@ def tts(text, lang, role="scammer", autoplay=True):
         st.error(str(e))
 
 def translate(text, lang):
+    """Translate line by line so paragraphs / bullets survive."""
     if lang == "en-IN" or not text:
         return text
+    def one(c):
+        return client.text.translate(input=c, source_language_code="en-IN",
+                                     target_language_code=lang).translated_text
     try:
         with st.spinner("Translating…"):
-            chunks = [text[i:i + 850] for i in range(0, len(text), 850)] if len(text) > 900 else [text]
-            return " ".join(client.text.translate(input=c, source_language_code="en-IN",
-                                                  target_language_code=lang).translated_text for c in chunks)
+            out = []
+            for line in text.split("\n"):
+                if not line.strip():
+                    out.append(""); continue
+                out.append(" ".join(one(line[i:i + 850]) for i in range(0, len(line), 850)))
+            return "\n".join(out)
     except Exception as e:
         st.error(str(e)); return text
 
@@ -279,7 +286,7 @@ with tab1:
             S.flags += g["red_flags_present"]; S.mistakes += g["user_mistakes"]; S.moves += g["user_good_moves"]
             lower = user_text.lower()
             if S.turns >= 4 or any(e in lower for e in ENDERS) or any(
-                    re.search(r"hang|1930|police|call back|verify", x, re.I) for x in g["user_good_moves"]):
+                    re.search(r"hang up|1930|police", x, re.I) for x in g["user_good_moves"]):
                 S.done = True
             else:
                 speak_next()
@@ -331,7 +338,7 @@ with tab3:
             text = f"Score: {score}/100\n\n{body}\n\n" + "\n".join(f"- {r}" for r in RULES)
             S.report = translate(text, LANG)
     if S.report:
-        st.markdown(S.report)
+        st.markdown(S.report.replace("\n", "\n\n"))
         if st.button("🔊 Read aloud"):
             tts(S.report, LANG, "narrator")
     st.subheader("Family Safe-Word Card")
