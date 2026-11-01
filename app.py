@@ -240,6 +240,11 @@ tab1, tab2, tab3 = st.tabs(["📞 Drill", "🎭 Clone Reveal", "📋 Report Card
 with tab1:
     if st.button("📞 Start call") and not S.history:
         speak_next()
+    with st.expander("📲 Get the drill as a real phone call (coming soon)"):
+        c1, c2 = st.columns([3, 1])
+        phone = c1.text_input("Your phone number", placeholder="+91 XXXXX XXXXX", key="phone")
+        if c2.button("📞 Call me"):
+            st.info("Phone calls aren't live yet — use **Start call** below for now. Your number was not saved or used.")
     risk = S.risk
     label = "🟢 SAFE" if risk < 35 else "🟠 RISKY" if risk < 70 else "🔴 SCAMMED"
     st.progress(risk / 100, text=f"Danger meter: {risk}/100 — {label}")
