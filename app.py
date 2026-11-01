@@ -167,8 +167,7 @@ def translate(text, lang):
     except Exception as e:
         st.error(str(e)); return text
 
-def clone(ref_bytes, text, lang):
-    fname = "ref.wav"
+def clone(ref_bytes, text, lang, fname="ref.wav"):
     try:
         with st.spinner("Cloning voice…"):
             try:
@@ -293,7 +292,7 @@ with tab2:
             script = translate("Mummy, I've had an accident. Please send fifty thousand rupees right now. "
                                "Don't tell Papa, I'll explain later.", LANG)
             st.write(script)
-            audio = clone(ref.getvalue(), script, LANG)
+            audio = clone(ref.getvalue(), script, LANG, getattr(ref, "name", None) or "ref.wav")
             if audio:
                 st.audio(audio, format="audio/wav", autoplay=True)
                 st.warning("**That was AI.** It needed only 10 seconds of voice. McAfee found 69% of Indians can't tell "
