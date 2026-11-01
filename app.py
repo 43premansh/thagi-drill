@@ -268,7 +268,7 @@ with tab1:
             audio = st.audio_input("Reply like you would on a real call (under 25 sec)")
         except Exception:
             st.caption("Microphone unavailable — use the text box.")
-        with st.form(f"reply{S.turns}", clear_on_submit=True):
+        with st.form("reply", clear_on_submit=True):
             typed = st.text_input("…or type your reply (press Enter)")
             sent = st.form_submit_button("Send reply")
         user_text = ""
